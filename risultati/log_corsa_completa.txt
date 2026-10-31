@@ -1,0 +1,76 @@
+
+=== oracolo=piantato k=12 (k_train=6)
+  train 300000 righe (27507 positivi a k_train), val 300000
+  test: 1000 prefissi nuovi x 16384 candidati, verifico i primi 1024
+  maggioritaria (seed 0)     successi   266/1024000 AUC val 0.500
+  maggioritaria (seed 1)     successi   277/1024000 AUC val 0.500
+  maggioritaria (seed 2)     successi   254/1024000 AUC val 0.500
+  logistica (seed 0)         successi   508/1024000 AUC val 0.525
+  logistica (seed 1)         successi   508/1024000 AUC val 0.525
+  logistica (seed 2)         successi   508/1024000 AUC val 0.525
+  gbm (seed 0)               successi   446/1024000 AUC val 0.528
+  gbm (seed 1)               successi   453/1024000 AUC val 0.523
+  gbm (seed 2)               successi   464/1024000 AUC val 0.522
+  mlp (seed 0)               successi   354/1024000 AUC val 0.516
+  mlp (seed 1)               successi   334/1024000 AUC val 0.516
+  mlp (seed 2)               successi   335/1024000 AUC val 0.513
+  gbm_mescolato (seed 0)     successi   274/1024000 AUC val 0.502
+  gbm_mescolato (seed 1)     successi   266/1024000 AUC val 0.500
+  gbm_mescolato (seed 2)     successi   292/1024000 AUC val 0.500
+
+=== oracolo=sha256d k=12 (k_train=6)
+  train 300000 righe (25885 positivi a k_train), val 300000
+  test: 1000 prefissi nuovi x 16384 candidati, verifico i primi 1024
+  maggioritaria (seed 0)     successi   256/1024000 AUC val 0.500
+  maggioritaria (seed 1)     successi   255/1024000 AUC val 0.500
+  maggioritaria (seed 2)     successi   239/1024000 AUC val 0.500
+  logistica (seed 0)         successi   286/1024000 AUC val 0.502
+  logistica (seed 1)         successi   286/1024000 AUC val 0.502
+  logistica (seed 2)         successi   286/1024000 AUC val 0.502
+  gbm (seed 0)               successi   254/1024000 AUC val 0.498
+  gbm (seed 1)               successi   230/1024000 AUC val 0.501
+  gbm (seed 2)               successi   237/1024000 AUC val 0.495
+  mlp (seed 0)               successi   262/1024000 AUC val 0.499
+  mlp (seed 1)               successi   214/1024000 AUC val 0.500
+  mlp (seed 2)               successi   265/1024000 AUC val 0.497
+  gbm_mescolato (seed 0)     successi   272/1024000 AUC val 0.496
+  gbm_mescolato (seed 1)     successi   228/1024000 AUC val 0.504
+  gbm_mescolato (seed 2)     successi   244/1024000 AUC val 0.497
+
+=== oracolo=sha256d k=16 (k_train=6)
+  train 300000 righe (25885 positivi a k_train), val 300000
+  test: 1000 prefissi nuovi x 16384 candidati, verifico i primi 1024
+  maggioritaria (seed 0)     successi    19/1024000 AUC val 0.500
+  maggioritaria (seed 1)     successi    13/1024000 AUC val 0.500
+  maggioritaria (seed 2)     successi    10/1024000 AUC val 0.500
+  logistica (seed 0)         successi    21/1024000 AUC val 0.502
+  logistica (seed 1)         successi    21/1024000 AUC val 0.502
+  logistica (seed 2)         successi    21/1024000 AUC val 0.502
+  gbm (seed 0)               successi    14/1024000 AUC val 0.498
+  gbm (seed 1)               successi     8/1024000 AUC val 0.501
+  gbm (seed 2)               successi    12/1024000 AUC val 0.495
+  mlp (seed 0)               successi     9/1024000 AUC val 0.499
+  mlp (seed 1)               successi    15/1024000 AUC val 0.500
+  mlp (seed 2)               successi    16/1024000 AUC val 0.497
+  gbm_mescolato (seed 0)     successi    16/1024000 AUC val 0.496
+  gbm_mescolato (seed 1)     successi    13/1024000 AUC val 0.504
+  gbm_mescolato (seed 2)     successi    13/1024000 AUC val 0.497
+
+=== studio dei round ridotti
+  round  4 singolo: AUC stesso prefisso 1.000, prefissi nuovi 0.599
+  round  5 singolo: AUC stesso prefisso 0.495, prefissi nuovi 0.496
+  round  6 singolo: AUC stesso prefisso 0.494, prefissi nuovi 0.500
+  round  8 singolo: AUC stesso prefisso 0.500, prefissi nuovi 0.498
+  round 16 singolo: AUC stesso prefisso 0.501, prefissi nuovi 0.506
+  round 64 singolo: AUC stesso prefisso 0.496, prefissi nuovi 0.500
+  round  4 doppio : AUC stesso prefisso 0.496, prefissi nuovi 0.498
+  round  5 doppio : AUC stesso prefisso 0.509, prefissi nuovi 0.504
+  round  6 doppio : AUC stesso prefisso 0.502, prefissi nuovi 0.496
+  round  8 doppio : AUC stesso prefisso 0.495, prefissi nuovi 0.497
+  round 16 doppio : AUC stesso prefisso 0.508, prefissi nuovi 0.501
+  round 64 doppio : AUC stesso prefisso 0.502, prefissi nuovi 0.503
+
+Report: risultati/report.md  (2139 s)
+real 2141,28
+user 9095,53
+sys 2559,77
