@@ -3,6 +3,7 @@
     .venv/bin/python run_experiment.py            # completo (k=12 e 16, controlli)
     .venv/bin/python run_experiment.py --rapido   # prova veloce
     .venv/bin/python run_experiment.py --k 12 16 20
+    .venv/bin/python run_experiment.py --oracolo scrypt --out risultati_scrypt   # Litecoin
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from sklearn.metrics import roc_auc_score
 
 import report
 import round_ridotti
+import config as cfgmod
 from config import Config, rapido
 from dataset import build_split, make_prefixes, null_rate, oracle_top64_many, random_nonces, \
     sequential_top64, to_xy
@@ -91,7 +93,7 @@ def run_one(cfg: Config) -> dict:
                    **{m.name: m.attempts for m, _ in methods
                       if m.extra["modello"] in ("gbm", "logistica") and m.extra["seed"] == 0}},
         curva=learning_curve(cfg, Xtr, ytr, Xva, yva),
-        hash_s=hash_seconds_per_candidate(pre["test"][0]),
+        hash_s=hash_seconds_per_candidate(pre["test"][0], oracolo=cfg.oracolo),
         secondi=time.perf_counter() - t0,
         controlli=dict(prefissi_condivisi=len(set(pre["train"]) & set(pre["test"]))
                        + len(set(pre["val"]) & set(pre["test"]))
@@ -101,23 +103,36 @@ def run_one(cfg: Config) -> dict:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--k", type=int, nargs="+", default=[12, 16])
+    ap.add_argument("--k", type=int, nargs="+", default=None,
+                    help="default: 12 16 (sha256d); con scrypt il k fissato in config.scrypt")
+    ap.add_argument("--oracolo", choices=["sha256d", "scrypt"], default="sha256d",
+                    help="sha256d (default): piantato + SHA-256 doppio; scrypt: solo scrypt")
     ap.add_argument("--rapido", action="store_true")
     ap.add_argument("--seed", type=int, default=Config.master_seed)
     ap.add_argument("--out", default="risultati")
     a = ap.parse_args()
     cfg = Config(master_seed=a.seed)
-    if a.rapido:
-        cfg = rapido(cfg)
+    if a.oracolo == "scrypt":
+        cfg = cfgmod.scrypt(cfg, quick=a.rapido)
+        a.k = a.k or [cfg.k]
+    else:
+        a.k = a.k or [12, 16]
+        if a.rapido:
+            cfg = rapido(cfg)
     out = Path(a.out)
     out.mkdir(exist_ok=True)
     t0 = time.perf_counter()
-    runs = [run_one(cfg.with_(oracolo="piantato", k=a.k[0]))]
-    runs += [run_one(cfg.with_(oracolo="sha256d", k=k)) for k in a.k]
-    print("\n=== studio dei round ridotti", flush=True)
-    rounds = round_ridotti.study(cfg)
+    if a.oracolo == "scrypt":  # controllo positivo e round ridotti: non si applicano (vedi report)
+        runs = [run_one(cfg.with_(k=k, k_train=min(cfg.k_train, k - 1))) for k in a.k]
+        rounds = []
+    else:
+        runs = [run_one(cfg.with_(oracolo="piantato", k=a.k[0]))]
+        runs += [run_one(cfg.with_(oracolo="sha256d", k=k)) for k in a.k]
+        print("\n=== studio dei round ridotti", flush=True)
+        rounds = round_ridotti.study(cfg)
     meta = dict(comando="run_experiment.py " + " ".join(
-                    (["--rapido"] if a.rapido else []) + ["--k", *map(str, a.k), "--seed",
+                    (["--rapido"] if a.rapido else [])
+                    + (["--oracolo", a.oracolo] if a.oracolo != "sha256d" else []) + ["--k", *map(str, a.k), "--seed",
                                                           str(a.seed)]),
                 config=cfg.as_dict(), python=platform.python_version(),
                 numpy=np.__version__, sklearn=sklearn.__version__,

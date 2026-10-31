@@ -14,6 +14,8 @@ uv pip install --python .venv/bin/python numpy scikit-learn scipy matplotlib pyt
 .venv/bin/python run_experiment.py --rapido --out risultati_rapido   # prova veloce
 .venv/bin/python run_experiment.py                             # completo → risultati/report.md
 .venv/bin/python run_experiment.py --k 12 16 20 --seed 7       # altre soglie, altro seed
+.venv/bin/python run_experiment.py --oracolo scrypt --out risultati_scrypt   # scrypt (~100 min)
+.venv/bin/python run_midstate.py                               # studio 4-5 round (~12 min)
 ```
 
 ## Funzione obiettivo
@@ -45,6 +47,18 @@ Report in `risultati/report.md`, log in `risultati/log_corsa_completa.txt`.
 - **Costo:** valutare un candidato col modello costa più che calcolarne l'hash.
 - **Round ridotti:** SHA-256 singolo prevedibile a 4 round, non a 5; il doppio mai.
 
+### Studio «midstate» (`run_midstate.py` → `risultati_midstate/`)
+Con le quantità che un miner calcola prima del nonce (midstate, stato dopo i round 0-2 del
+blocco 2, costante del round 3), lo SHA-256 singolo a **4 round** diventa prevedibile anche su
+prefissi nuovi (AUC 0,998 gbm, 0,994 mlp). A 5 round e oltre, e per il doppio SHA-256, AUC ≤ 0,505
+e nessuna cella significativa su 54. Le tre ipotesi pre-registrate sono confermate. A 4 round,
+dopo il precalcolo, l'hash è una somma a 32 bit: il modello costa più dell'hash.
+
+### Scrypt, Litecoin/Dogecoin (`run_experiment.py --oracolo scrypt` → `risultati_scrypt/`)
+k=8, 2000 prefissi di test, 1,02 milioni di hash verificati per metodo: **nessun modello batte il
+caso** (tutti fra 3912 e 4094 successi contro 4000 attesi). Miglioramento minimo rilevabile +6%.
+Durata 104 minuti.
+
 ## File
 | file | ruolo |
 |---|---|
@@ -55,5 +69,6 @@ Report in `risultati/report.md`, log in `risultati/log_corsa_completa.txt`.
 | `model.py` | modelli e ordinamento dei candidati |
 | `evaluate.py` | selettore, metriche, bootstrap, test, potenza |
 | `round_ridotti.py` | studio dei round ridotti |
+| `midstate.py`, `run_midstate.py` | studio fra 4 e 5 round con feature precalcolate |
 | `report.py` | report Markdown e grafici |
 | `run_experiment.py` | esegue tutto con un comando |

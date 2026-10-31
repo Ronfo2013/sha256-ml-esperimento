@@ -17,12 +17,21 @@ connessione a pool, nodi o wallet. Ipotesi da falsificare, non da far funzionare
   AUC al massimo teorico 0,528); SHA-256 doppio reale: nessun modello significativo a k=12
   (MDE +23%) né a k=16 (MDE +99%, poca potenza). La logistica è deterministica: i suoi 3 seed
   danno risultati identici, non sono ripetizioni.
+- Oracolo `scrypt` (31/10/2026): Litecoin confronta il digest come intero LITTLE-endian, quindi
+  top64 = digest[24:32] letto little-endian (non i primi 8 byte). ~260 µs/hash su un core,
+  ~21k hash/s su 8 core: dimensioni proprie in `config.scrypt`. Corsa: nessun modello batte il
+  caso (MDE +6%). Niente round ridotti né piantato per scrypt.
+- Studio midstate (`midstate.py`): a 4 round SHA singolo la prima parola dell'hash è
+  (D_a + W3) mod 2^32 con D_a precalcolabile (test lo verifica). Esito: gbm/mlp AUC ~0,99 a
+  4 round con D, 0,5 senza D e da 5 round in su.
 - Gli iperparametri dei modelli sono fissati a priori: cambiarli dopo aver visto il test è p-hacking.
 
 ## Comandi
 - Test: `.venv/bin/python -m pytest -q`
 - Prova rapida: `.venv/bin/python run_experiment.py --rapido --out risultati_rapido`
 - Completo: `.venv/bin/python run_experiment.py` (k=12 e 16) → `risultati/report.md`
+- Scrypt: `.venv/bin/python run_experiment.py --oracolo scrypt --out risultati_scrypt` (~100 min)
+- Midstate: `.venv/bin/python run_midstate.py` → `risultati_midstate/` (~12 min)
 
 ## Mappa dei percorsi
 `run_experiment.py::main` → per ogni corsa `run_one` → `dataset.make_prefixes` (split per
@@ -32,7 +41,8 @@ prefisso) → `dataset.build_split` → `dataset.oracle_top64_many` → `hashing
 `risultati/report.md` + PNG. Studio dei round: `round_ridotti.study` (fuori dal flusso del
 selettore, usa `hashing.top64_many` con `rounds<64`).
 
-Punti di divergenza: `oracolo` = `sha256d` (reale) o `piantato` (finto, controllo positivo);
+Punti di divergenza: `oracolo` = `sha256d` (reale), `scrypt` (reale, `hashing.top64_scrypt_many`,
+salta round ridotti e piantato) o `piantato` (finto, controllo positivo);
 `rounds == 64` → hashlib, altrimenti numpy.
 
 ```mermaid
@@ -46,6 +56,8 @@ graph LR
   B --> H[evaluate.TestBench]
   H --> I[dataset.verify → hashlib]
   H --> J[evaluate.compare]
+  E -->|scrypt| S[hashing.top64_scrypt_many]
   A --> K[round_ridotti.study]
+  M[run_midstate.main] --> N[midstate.study]
   A --> L[report.write → report.md + PNG]
 ```

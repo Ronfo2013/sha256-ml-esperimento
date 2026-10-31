@@ -1,0 +1,21 @@
+
+=== oracolo=scrypt k=8 (k_train=4)
+  train 300000 righe (63773 positivi a k_train), val 245760
+  test: 2000 prefissi nuovi x 8192 candidati, verifico i primi 512
+  maggioritaria (seed 0)     successi  3970/1024000 AUC val 0.500
+  maggioritaria (seed 1)     successi  3955/1024000 AUC val 0.500
+  maggioritaria (seed 2)     successi  4069/1024000 AUC val 0.500
+  logistica (seed 0)         successi  3993/1024000 AUC val 0.505
+  logistica (seed 1)         successi  3993/1024000 AUC val 0.505
+  logistica (seed 2)         successi  3993/1024000 AUC val 0.505
+  gbm (seed 0)               successi  4000/1024000 AUC val 0.501
+  gbm (seed 1)               successi  4070/1024000 AUC val 0.502
+  gbm (seed 2)               successi  3995/1024000 AUC val 0.502
+  mlp (seed 0)               successi  4094/1024000 AUC val 0.496
+  mlp (seed 1)               successi  4041/1024000 AUC val 0.503
+  mlp (seed 2)               successi  4012/1024000 AUC val 0.504
+  gbm_mescolato (seed 0)     successi  3944/1024000 AUC val 0.496
+  gbm_mescolato (seed 1)     successi  3982/1024000 AUC val 0.500
+  gbm_mescolato (seed 2)     successi  3912/1024000 AUC val 0.497
+
+Report: risultati_scrypt/report.md  (6243 s)

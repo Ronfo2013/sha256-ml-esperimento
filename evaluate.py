@@ -15,7 +15,7 @@ from sklearn.metrics import roc_auc_score
 from baselines import first_hit, random_search, sequential
 from config import Config
 from dataset import features, null_rate, verify
-from hashing import success_from_top64, top64_hashlib
+from hashing import success_from_top64, top64_hashlib, top64_scrypt
 
 
 @dataclass
@@ -94,10 +94,13 @@ def auc_hanley(y: np.ndarray, s: np.ndarray) -> tuple[float, float]:
     return float(a), float(se)
 
 
-def hash_seconds_per_candidate(prefix: bytes, n: int = 200_000) -> float:
+def hash_seconds_per_candidate(prefix: bytes, n: int = 200_000, oracolo: str = "sha256d") -> float:
+    """Secondi per un hash dell'oracolo, su un core (unità dei «hash equivalenti»)."""
+    if oracolo == "scrypt":
+        n = min(n, 2000)
     nonces = np.arange(n, dtype=np.uint64)
     t = time.perf_counter()
-    top64_hashlib(prefix, nonces)
+    top64_scrypt(prefix, nonces) if oracolo == "scrypt" else top64_hashlib(prefix, nonces)
     return (time.perf_counter() - t) / n
 
 

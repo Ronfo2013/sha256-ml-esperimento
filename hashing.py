@@ -60,6 +60,58 @@ def top64_hashlib(prefix: bytes, nonces: np.ndarray, double: bool = True) -> np.
     return _top64_hashlib_chunk((prefix, np.asarray(nonces, dtype=np.uint64), double))
 
 
+# ---------------------------------------------------------------- scrypt (Litecoin/Dogecoin)
+
+SCRYPT_PARAMS = dict(n=1024, r=1, p=1, dklen=32)
+
+
+def scrypt_hash(msg: bytes) -> bytes:
+    """scrypt come nel proof-of-work di Litecoin: password = salt = messaggio, N=1024, r=1, p=1."""
+    return hashlib.scrypt(msg, salt=msg, **SCRYPT_PARAMS)
+
+
+def is_success_scrypt(digest: bytes, k: int) -> bool:
+    """Definizione letterale (Litecoin): digest come intero little-endian < 1 << (256 - k)."""
+    return int.from_bytes(digest, "little") < (1 << (256 - k))
+
+
+def _top64_scrypt_chunk(args) -> np.ndarray:
+    prefix, nonces = args
+    out = np.empty(len(nonces), dtype=np.uint64)
+    for i, n in enumerate(nonces.tolist()):
+        out[i] = int.from_bytes(scrypt_hash(prefix + n.to_bytes(NONCE_BYTES, "little"))[24:32],
+                                "little")
+    return out
+
+
+def top64_scrypt(prefix: bytes, nonces: np.ndarray) -> np.ndarray:
+    """Top64 per scrypt: i 8 byte ALTI del confronto little-endian sono digest[24:32]."""
+    return _top64_scrypt_chunk((prefix, np.asarray(nonces, dtype=np.uint64)))
+
+
+def _top64_scrypt_job(args) -> np.ndarray:
+    return _top64_scrypt_chunk(args)
+
+
+def top64_scrypt_many(prefixes: list[bytes], nonces_per_prefix: list[np.ndarray],
+                      workers: int | None = None) -> list[np.ndarray]:
+    """Come `top64_many`, ma per scrypt. Un job = un prefisso, spezzato in blocchi da 2048
+    nonce perché ogni hash costa ~250 µs e i prefissi possono essere pochi."""
+    jobs, spans = [], []
+    for p, n in zip(prefixes, nonces_per_prefix):
+        n = np.asarray(n, dtype=np.uint64)
+        start = len(jobs)
+        jobs += [(p, n[i:i + 2048]) for i in range(0, len(n), 2048)]
+        spans.append((start, len(jobs)))
+    if workers == 1 or len(jobs) < 4:
+        res = [_top64_scrypt_job(j) for j in jobs]
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            res = list(ex.map(_top64_scrypt_job, jobs, chunksize=max(1, len(jobs) // 64)))
+    return [np.concatenate(res[a:b]) if b > a else np.empty(0, dtype=np.uint64)
+            for a, b in spans]
+
+
 # ---------------------------------------------------------------- numpy, round ridotti
 
 _K = np.array([

@@ -191,9 +191,12 @@ def write(data: dict, out: Path):
     fig_curve(runs, out)
     for run in runs:
         fig_attempts(run, out, cfg["n_candidates"])
-    fig_rounds(data["round"], out)
+    scrypt = all(r["oracolo"] == "scrypt" for r in runs)
+    if data["round"]:
+        fig_rounds(data["round"], out)
 
-    L = ["# Esperimento: un modello di ML sceglie nonce SHA-256 migliori del caso?", "",
+    nome = "scrypt (Litecoin/Dogecoin)" if scrypt else "SHA-256"
+    L = [f"# Esperimento: un modello di ML sceglie nonce {nome} migliori del caso?", "",
          f"Comando: `.venv/bin/python {meta['comando']}`  ",
          f"Seed principale: `{cfg['master_seed']}` (tutti gli altri seed derivano da questo); "
          f"seed dei modelli: {cfg['model_seeds']}  ",
@@ -229,7 +232,27 @@ def write(data: dict, out: Path):
          "(×2 sui nonce con i 4 bit bassi a zero): non è SHA-256 e serve solo a provare la "
          "pipeline.",
          "- **Formato.** Il nonce è di 8 byte little-endian come da specifica; in Bitcoin è di 4 "
-         "byte, e il prefisso è casuale invece di un vero header.", "",
+         "byte, e il prefisso è casuale invece di un vero header.", ""]
+    if scrypt:
+        L[-1:] = [
+         "- **Formato scrypt.** `hashlib.scrypt(msg, salt=msg, n=1024, r=1, p=1, dklen=32)` con "
+         "msg = prefisso di 76 byte + nonce di 8 byte little-endian (stesso messaggio della "
+         "pipeline SHA-256). L'header Litecoin vero è di 80 byte con nonce a 4 byte. Il digest si "
+         "confronta col target come intero little-endian: top64 = digest[24:32] letto "
+         "little-endian, successo se top64 < 2^(64-k).",
+         "- **Controllo positivo non ripetuto.** L'oracolo «piantato» e il suo vantaggio finto "
+         "(×2) sono già stati recuperati nella corsa SHA-256 (`risultati/`): la pipeline di "
+         "valutazione è la stessa. Qui resta il controllo con etichette mescolate "
+         "(`gbm_mescolato`) e la classe maggioritaria.",
+         "- **Round ridotti: non applicabile.** Lo studio dei round indeboliti riguarda solo la "
+         "struttura di SHA-256; scrypt non è stato indebolito e lo studio è saltato.",
+         "- **Dimensioni fissate prima del test.** Scelte dopo aver misurato la velocità (circa "
+         "260 µs/hash su un core, ~430 volte il doppio SHA-256) e mai ritoccate dopo.",
+         "- **Tempi.** Un altro processo ha usato la CPU in parallelo: i tempi (inclusi gli "
+         "«hash equivalenti» per l'inferenza e l'addestramento) possono essere gonfiati.", ""]
+    else:
+        L.append("")
+    L += [
          "## 2. Potenza statistica", "",
          "| corsa | hash verificati per metodo | tasso del caso | miglioramento minimo "
          "rilevabile (potenza 80%) |", "|---|---|---|---|"]
@@ -241,27 +264,30 @@ def write(data: dict, out: Path):
         L += [f"### {run['oracolo']}, k={run['k']}", "",
               f"Addestramento: {run['righe_train']:,} righe, {run['positivi_train']:,} positivi "
               f"a k_train. Test: {cfg['n_test_prefixes']} prefissi nuovi × {cfg['n_candidates']:,}"
-              f" candidati, verificati i primi {cfg['top_m']:,}. Un doppio hash costa "
+              f" candidati, verificati i primi {cfg['top_m']:,}. Un hash ({run['oracolo']}) costa "
               f"{run['hash_s'] * 1e6:.2f} µs.", ""]
         L += _run_table(run, cfg)
         L += ["", f"![tentativi](tentativi_{run['oracolo']}_k{run['k']}.png)", ""]
     L += ["## 5. Confronto dei tassi di successo", "", "![tassi](tassi.png)", "",
           "## 6. Curva di apprendimento", "", "![curva](curva_apprendimento.png)", "",
-          "## 7. Round ridotti: dove si perde la struttura", "",
-          "| funzione | round | AUC stesso prefisso (min–max) | AUC prefissi nuovi |",
-          "|---|---|---|---|"]
+          "## 7. Round ridotti: dove si perde la struttura", ""]
+    if not data["round"]:
+        L += ["Studio non eseguito per questo oracolo (vedi sezione 1).", ""]
+    else:
+        L += ["| funzione | round | AUC stesso prefisso (min–max) | AUC prefissi nuovi |",
+              "|---|---|---|---|"]
     for r in data["round"]:
         L.append(f"| {r['funzione']} | {r['round']} | {r['auc_stesso_prefisso']:.3f} "
                  f"({r['auc_stesso_prefisso_min']:.3f}–{r['auc_stesso_prefisso_max']:.3f}) | "
                  f"{r['auc_prefissi_nuovi']:.3f} |")
-    L += ["", "Lettura: «stesso prefisso» misura se esiste struttura in assoluto (leakage voluto). "
+    if data["round"]:
+        L += ["", "Lettura: «stesso prefisso» misura se esiste struttura in assoluto (leakage voluto). "
           "Un'AUC su prefissi nuovi lontana da 0,5 al round 4 del singolo (sopra o sotto, a seconda "
           "del seed) non è un segnale che generalizza: con pochi prefissi di addestramento il "
           "modello impara la finestra di valori buoni di quei prefissi, che sui prefissi nuovi "
           "cade altrove per caso. Con la prova rapida (2 prefissi) era 0,23, con la completa "
-          "(3 prefissi) 0,60.", "",
-          "![round](round_ridotti.png)", "",
-          "## 8. Come leggere le colonne", "",
+          "(3 prefissi) 0,60.", "", "![round](round_ridotti.png)"]
+    L += ["", "## 8. Come leggere le colonne", "",
           "- **tasso × caso**: 1,0 vuol dire uguale al caso; 2,0 vuol dire il doppio dei successi.",
           "- **lift vs casuale**: stesso confronto, ma con la ricerca casuale fatta davvero sugli "
           "stessi candidati.",

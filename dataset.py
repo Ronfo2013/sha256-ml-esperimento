@@ -10,28 +10,30 @@ from dataclasses import dataclass
 import numpy as np
 
 from config import Config
-from hashing import success_from_top64, top64, top64_many
+from hashing import success_from_top64, top64, top64_many, top64_scrypt_many
 
 # ---------------------------------------------------------------- oracoli
 
 
 def oracle_top64_many(name: str, prefixes, nonces_list, workers=None) -> list[np.ndarray]:
-    """'sha256d' = doppio SHA-256 reale (hashlib).
+    """'sha256d' = doppio SHA-256 reale (hashlib). 'scrypt' = scrypt reale (N=1024, r=1, p=1).
     'piantato' = controllo positivo: SHA-256 reale, ma per i nonce con i 4 bit bassi a zero
     il valore è dimezzato, quindi la probabilità di successo raddoppia (a ogni k).
     È una funzione FINTA, costruita apposta perché un segnale ci sia."""
+    if name == "scrypt":  # Litecoin/Dogecoin: top64 letto little-endian da digest[24:32]
+        return top64_scrypt_many(prefixes, nonces_list, workers)
+    if name not in ("sha256d", "piantato"):
+        raise ValueError(f"oracolo sconosciuto: {name}")
     tops = top64_many(prefixes, nonces_list, 64, True, workers)
     if name == "sha256d":
         return tops
-    if name == "piantato":
-        out = []
-        for n, t in zip(nonces_list, tops):
-            t = t.copy()
-            mask = (np.asarray(n, dtype=np.uint64) & np.uint64(15)) == 0
-            t[mask] >>= np.uint64(1)
-            out.append(t)
-        return out
-    raise ValueError(f"oracolo sconosciuto: {name}")
+    out = []  # piantato
+    for n, t in zip(nonces_list, tops):
+        t = t.copy()
+        mask = (np.asarray(n, dtype=np.uint64) & np.uint64(15)) == 0
+        t[mask] >>= np.uint64(1)
+        out.append(t)
+    return out
 
 
 def oracle_top64(name: str, prefix: bytes, nonces) -> np.ndarray:
@@ -41,7 +43,7 @@ def oracle_top64(name: str, prefix: bytes, nonces) -> np.ndarray:
 def null_rate(name: str, k: int) -> float:
     """Tasso di successo atteso scegliendo a caso (ipotesi nulla)."""
     p = 2.0 ** -k
-    if name == "sha256d":
+    if name in ("sha256d", "scrypt"):
         return p
     if name == "piantato":
         return p * (15 / 16) + 2 * p * (1 / 16)

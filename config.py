@@ -51,3 +51,18 @@ def rapido(cfg: Config) -> Config:
                      n_test_prefixes=150, n_candidates=8192, top_m=512, model_seeds=(0,),
                      bootstrap_reps=300, round_list=(4, 5, 64), round_prefixes=2,
                      round_nonces=20_000)
+
+
+def scrypt(cfg: Config, quick: bool = False) -> Config:
+    """Dimensioni per scrypt (~260 µs/hash su 1 core contro ~0,6 µs del doppio SHA-256), fissate
+    PRIMA di vedere il test. k=8 (1 su 256) con k_train=4; test: 2000 prefissi x 8192 candidati,
+    verificati i primi 512 (M/N = 1/16 come per SHA-256), cioè 1,02M hash verificati per metodo.
+    Misurato: ~21k hash/s su 8 core; ~49M hash in tutto, circa 40 min di solo hashing."""
+    cfg = cfg.with_(oracolo="scrypt", k=8, k_train=4, n_train_prefixes=250, n_val_prefixes=60,
+                    nonces_per_train_prefix=4096, n_test_prefixes=2000, n_candidates=8192,
+                    top_m=512)
+    if quick:
+        cfg = rapido(cfg).with_(k=6, k_train=3, n_train_prefixes=40, n_val_prefixes=15,
+                                nonces_per_train_prefix=1024, n_test_prefixes=60,
+                                n_candidates=4096, top_m=256)
+    return cfg
