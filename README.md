@@ -15,6 +15,7 @@ uv pip install --python .venv/bin/python numpy scikit-learn scipy matplotlib pyt
 .venv/bin/python run_experiment.py                             # completo → risultati/report.md
 .venv/bin/python run_experiment.py --k 12 16 20 --seed 7       # altre soglie, altro seed
 .venv/bin/python run_experiment.py --oracolo scrypt --out risultati_scrypt   # scrypt (~100 min)
+.venv/bin/python run_ottimizzato.py                            # risparmio per nonce (~1 min)
 .venv/bin/python run_midstate.py                               # studio 4-5 round (~12 min)
 ```
 
@@ -59,6 +60,12 @@ k=8, 2000 prefissi di test, 1,02 milioni di hash verificati per metodo: **nessun
 caso** (tutti fra 3912 e 4094 successi contro 4000 attesi). Miglioramento minimo rilevabile +6%.
 Durata 104 minuti.
 
+### Calcolare meno per nonce (`run_ottimizzato.py` → `risultati_ottimizzato/`)
+L'unico vantaggio reale: midstate, round e schedule precalcolati, uscita anticipata su H7,
+AsicBoost. Formato Bitcoin vero (80 byte, nonce 4 byte). 0 discordanze con hashlib su un
+milione di nonce; lavoro per nonce −36,6% (−43,6% con AsicBoost a 4 header) secondo il modello
+di costo. Tecniche già presenti negli ASIC: spiegano il mining, non danno un vantaggio.
+
 ## File
 | file | ruolo |
 |---|---|
@@ -69,6 +76,7 @@ Durata 104 minuti.
 | `model.py` | modelli e ordinamento dei candidati |
 | `evaluate.py` | selettore, metriche, bootstrap, test, potenza |
 | `round_ridotti.py` | studio dei round ridotti |
+| `ottimizzato.py`, `run_ottimizzato.py` | hash ottimizzato per nonce e misura del risparmio |
 | `midstate.py`, `run_midstate.py` | studio fra 4 e 5 round con feature precalcolate |
 | `report.py` | report Markdown e grafici |
 | `run_experiment.py` | esegue tutto con un comando |

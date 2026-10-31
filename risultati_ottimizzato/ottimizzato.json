@@ -1,0 +1,41 @@
+{
+  "n": 1000000,
+  "k": 8,
+  "seed": 20261031,
+  "discordanze": 0,
+  "discordanze_asicboost": 0,
+  "successi": 3857,
+  "costi": [
+    {
+      "versione": "ingenuo (3 compressioni)",
+      "round": 192,
+      "schedule": 144,
+      "feedforward": 24,
+      "operazioni": 10344,
+      "risparmio": 0.0
+    },
+    {
+      "versione": "ottimizzato (midstate, precalcolo, uscita anticipata)",
+      "round": 122,
+      "schedule": 91,
+      "feedforward": 9,
+      "operazioni": 6556,
+      "risparmio": 0.36620262954369687
+    },
+    {
+      "versione": "ottimizzato + AsicBoost (m=4)",
+      "round": 122,
+      "schedule": 56.5,
+      "feedforward": 9,
+      "operazioni": 5831.5,
+      "risparmio": 0.43624323279195665
+    }
+  ],
+  "tempi": {
+    "hashlib_C_s": 7.86017750040628e-07,
+    "numpy_ingenuo_s": 3.2792545849224554e-06,
+    "numpy_ottimizzato_s": 1.6521562496200203e-06,
+    "numpy_asicboost_s": 1.4367502088134644e-06,
+    "prepare_s": 0.0014312079874798656
+  }
+}

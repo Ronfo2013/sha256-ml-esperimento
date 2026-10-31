@@ -24,6 +24,9 @@ connessione a pool, nodi o wallet. Ipotesi da falsificare, non da far funzionare
 - Studio midstate (`midstate.py`): a 4 round SHA singolo la prima parola dell'hash è
   (D_a + W3) mod 2^32 con D_a precalcolabile (test lo verifica). Esito: gbm/mlp AUC ~0,99 a
   4 round con D, 0,5 senza D e da 5 round in su.
+- `ottimizzato.py` usa il formato Bitcoin VERO (80 byte, nonce 4 byte, W3 = nonce con byte
+  invertiti; confronto little-endian -> H7 del secondo hash), diverso dalla pipeline ML (nonce
+  8 byte, confronto big-endian). H7 = IV7 + e dopo il round 60: uscita anticipata esatta per k<=32.
 - Gli iperparametri dei modelli sono fissati a priori: cambiarli dopo aver visto il test è p-hacking.
 
 ## Comandi
@@ -31,6 +34,7 @@ connessione a pool, nodi o wallet. Ipotesi da falsificare, non da far funzionare
 - Prova rapida: `.venv/bin/python run_experiment.py --rapido --out risultati_rapido`
 - Completo: `.venv/bin/python run_experiment.py` (k=12 e 16) → `risultati/report.md`
 - Scrypt: `.venv/bin/python run_experiment.py --oracolo scrypt --out risultati_scrypt` (~100 min)
+- Ottimizzato: `.venv/bin/python run_ottimizzato.py` → `risultati_ottimizzato/` (~1 min)
 - Midstate: `.venv/bin/python run_midstate.py` → `risultati_midstate/` (~12 min)
 
 ## Mappa dei percorsi
@@ -59,5 +63,6 @@ graph LR
   E -->|scrypt| S[hashing.top64_scrypt_many]
   A --> K[round_ridotti.study]
   M[run_midstate.main] --> N[midstate.study]
+  O[run_ottimizzato.main] --> P[ottimizzato.prepare/scan] -->|verifica| Q[hashlib]
   A --> L[report.write → report.md + PNG]
 ```
