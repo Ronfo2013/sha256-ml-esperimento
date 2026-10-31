@@ -1,0 +1,329 @@
+<title>Dentro SHA-256</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+/* Layout: scheda tecnica a una colonna; il banco di prova (mappa dei bit) è l'unico elemento largo. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --fg:#14202b; --muted:#5b6876; --line:#cdd5dd;
+  --accent:#c2410c; --same:#dfe5eb; --cool:#2f5d8a; --nonce:#c2410c; --pad:#636f7c;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f151b; --panel:#151d25; --fg:#dbe3ea; --muted:#93a1ae; --line:#2a3642;
+  --accent:#f08a4b; --same:#1d2731; --cool:#7fb0de; --nonce:#f08a4b; --pad:#8794a2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151b; --panel:#151d25; --fg:#dbe3ea; --muted:#93a1ae; --line:#2a3642;
+  --accent:#f08a4b; --same:#1d2731; --cool:#7fb0de; --nonce:#f08a4b; --pad:#8794a2; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:40px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:56px}
+h1,h2{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2.2rem,6vw,3.6rem);line-height:1.02}
+h2{font-size:clamp(1.4rem,3.4vw,1.9rem);line-height:1.15}
+p{margin:0;max-width:65ch}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:18px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.hashline{font-family:var(--f-mono);font-size:clamp(.72rem,1.9vw,1rem);word-break:break-all;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.hashline .z{color:var(--accent);font-weight:600}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:.9rem;color:var(--muted)}
+.meta b{color:var(--fg);font-weight:500}
+/* parole dei blocchi */
+.blocks{display:grid;gap:20px}
+.block h3{font-family:var(--f-mono);font-size:.8rem;font-weight:500;margin:0 0 8px;color:var(--muted);letter-spacing:.04em}
+.words{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+@media (max-width:640px){.words{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.w{font-family:var(--f-mono);font-size:.72rem;padding:6px 6px 5px;border-radius:4px;background:var(--panel);
+  border:1px solid var(--line);display:flex;flex-direction:column;gap:2px;min-width:0}
+.w i{font-style:normal;color:var(--muted);font-size:.66rem}
+.w.k-nonce{border-color:var(--nonce);box-shadow:inset 0 0 0 1px var(--nonce)}
+.w.k-nonce i{color:var(--nonce)}
+.w.k-pad{color:var(--pad);background:transparent;border-style:dashed}
+.w.k-dyn{border-color:var(--cool)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.82rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+/* banco di prova */
+.controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
+.ctl input[type=number]{font-family:var(--f-mono);font-size:.95rem;width:12ch;padding:6px 8px;border:1px solid var(--line);
+  border-radius:4px;background:var(--panel);color:var(--fg)}
+.ctl input[type=range]{width:min(260px,70vw);accent-color:var(--accent)}
+button,.seg label{font-family:var(--f-body);font-size:.85rem;padding:7px 12px;border:1px solid var(--line);border-radius:4px;
+  background:var(--panel);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--fg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{border-radius:0}
+.seg label:first-of-type{border-radius:4px 0 0 4px}
+.seg label:last-of-type{border-radius:0 4px 4px 0;border-left:0}
+.seg input:checked+label{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.lab{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:16px}
+@media (max-width:760px){.lab{grid-template-columns:minmax(0,1fr)}}
+.mapbox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;min-width:0}
+.cols{display:grid;grid-template-columns:28px repeat(8,minmax(0,1fr));font-family:var(--f-mono);font-size:.68rem;color:var(--muted);text-align:center;margin-bottom:4px}
+.maprow{display:grid;grid-template-columns:28px minmax(0,1fr);gap:0}
+.ylab{position:relative;font-family:var(--f-mono);font-size:.62rem;color:var(--muted)}
+.ylab span{position:absolute;right:4px;transform:translateY(-50%)}
+canvas{display:block;width:100%;height:auto;cursor:crosshair;image-rendering:pixelated;touch-action:manipulation}
+.curvebox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.curvebox svg{width:100%;height:auto;display:block}
+.small{font-size:.8rem;color:var(--muted)}
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:10px}
+.regs{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+@media (max-width:640px){.regs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.reg{font-family:var(--f-mono);font-size:.72rem;display:flex;flex-direction:column;gap:1px;min-width:0}
+.reg i{font-style:normal;color:var(--muted)}
+.reg .d{color:var(--accent)}
+.formula{font-family:var(--f-mono);font-size:.78rem;overflow-x:auto;white-space:pre;color:var(--fg);margin:0}
+/* tabelle */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.hit{color:var(--accent);font-weight:600}
+footer{font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+a{color:var(--cool)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:16px">
+    <h1>Dentro SHA-256</h1>
+    <p>Come nasce l'hash di un blocco Bitcoin, dove entra il nonce e perché nessun modello riesce a prevedere quale nonce vince. L'hash qui sotto è calcolato nella pagina, sull'header del blocco genesi.</p>
+    <div class="hashline" id="hashline" aria-live="polite"></div>
+    <div class="meta"><span>nonce <b class="mono" id="m-nonce"></b></span><span>zeri iniziali <b class="mono" id="m-zeros"></b></span><span>valido per la difficoltà del genesi (32 bit) <b id="m-valid"></b></span></div>
+  </header>
+
+  <section>
+    <span class="eyebrow">1 · Il messaggio</span>
+    <h2>Dove sta il nonce</h2>
+    <p>SHA-256 lavora a blocchi di 64 byte, cioè 16 parole da 32 bit. L'header occupa due blocchi. Il primo non contiene il nonce, quindi il suo risultato (il <i>midstate</i>) si calcola una volta sola. Nel secondo blocco il nonce è la parola W3. Il risultato del primo SHA-256 passa poi in un secondo SHA-256.</p>
+    <div class="legend">
+      <span style="--c:var(--nonce)">nonce</span><span style="--c:var(--cool)">cambia con il nonce</span><span style="--c:var(--pad)">padding fisso</span><span style="--c:var(--line)">fisso per tutto l'header</span>
+    </div>
+    <div class="blocks">
+      <div class="block"><h3>BLOCCO 1 · byte 0–63 · versione, blocco precedente, radice di Merkle</h3><div class="words" id="b1"></div></div>
+      <div class="block"><h3>BLOCCO 2 · byte 64–79 + padding · coda Merkle, ora, difficoltà, nonce</h3><div class="words" id="b2"></div></div>
+      <div class="block"><h3>SECONDO SHA-256 · i 32 byte del primo hash + padding</h3><div class="words" id="b3"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">2 · Banco di prova</span>
+    <h2>Un bit del nonce, 64 round</h2>
+    <p>Ogni riga è un round, ogni colonna un bit degli otto registri a…h (256 bit). Una cella colorata è un bit diverso fra il nonce e lo stesso nonce con un solo bit invertito. Clicca una riga per vedere i valori di quel round.</p>
+    <div class="controls">
+      <div class="ctl"><label for="nonce">nonce (decimale)</label><input id="nonce" type="number" min="0" max="4294967295" step="1"></div>
+      <div class="ctl"><label for="bit">bit invertito: <span class="mono" id="bitv"></span></label><input id="bit" type="range" min="0" max="31" step="1" value="0"></div>
+      <button id="next" type="button">Nonce +1</button>
+      <button id="rand" type="button">Nonce casuale</button>
+      <button id="gen" type="button">Torna al genesi</button>
+      <div class="seg" role="radiogroup" aria-label="Compressione">
+        <input type="radio" name="stage" id="st1" value="1" checked><label for="st1">Blocco 2</label>
+        <input type="radio" name="stage" id="st2" value="2"><label for="st2">Secondo SHA</label>
+      </div>
+    </div>
+    <div class="lab">
+      <div class="mapbox">
+        <div class="cols"><span></span><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div>
+        <div class="maprow"><div class="ylab" id="ylab"></div><canvas id="map" width="1024" height="512" aria-label="Mappa dei bit diversi per round"></canvas></div>
+      </div>
+      <div class="curvebox">
+        <span class="small">bit diversi per round (su 256)</span>
+        <svg id="curve" viewBox="0 0 180 300" role="img" aria-label="Bit diversi per round"></svg>
+        <span class="small">La linea tratteggiata è 128: metà dei bit, quanto darebbe il caso.</span>
+      </div>
+    </div>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">3 · Le misure</span>
+    <h2>Cosa abbiamo misurato</h2>
+    <p>La mappa mostra a occhio quello che l'esperimento ha misurato con i modelli. Fino al round 3 il nonce non è ancora entrato. Al round 3 entra con una somma, e il modello la impara. Dal round 5 la differenza è già sparsa su metà dei bit, e ogni modello torna al caso.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>prova</th><th>risultato</th><th>significa</th></tr></thead>
+      <tbody>
+        <tr><td>SHA-256 singolo, 4 round, con le costanti precalcolate</td><td class="num hit">AUC 0,998</td><td>prevedibile: l'hash è ancora una somma</td></tr>
+        <tr><td>SHA-256 singolo, 5, 6, 8 round</td><td class="num">AUC ≤ 0,505</td><td>al caso</td></tr>
+        <tr><td>doppio SHA-256 (Bitcoin), 64 round</td><td class="num">nessun modello significativo</td><td>al caso; sarebbe stato visto un +23%</td></tr>
+        <tr><td>scrypt (Litecoin, Dogecoin)</td><td class="num">4.000 successi attesi, 3.912–4.094 trovati</td><td>al caso; sarebbe stato visto un +6%</td></tr>
+        <tr><td>controllo con vantaggio finto ×2</td><td class="num hit">×1,91 trovato</td><td>la pipeline vede un vantaggio quando c'è</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">4 · L'unico margine</span>
+    <h2>Calcolare meno per ogni nonce</h2>
+    <p>Non si può scegliere il nonce giusto, ma si può fare meno lavoro per provarlo. Tutte queste tecniche sono già negli ASIC. Numeri dal nostro modello di costo, verificati contro hashlib su un milione di nonce.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>tecnica</th><th>cosa sfrutta</th><th>lavoro per nonce</th></tr></thead>
+      <tbody>
+        <tr><td>nessuna</td><td>tre compressioni complete</td><td class="num">10.344 operazioni</td></tr>
+        <tr><td>midstate</td><td>il blocco 1 non contiene il nonce</td><td class="num" rowspan="1">da 3 a 2 compressioni</td></tr>
+        <tr><td>round 0–2 e schedule precalcolati</td><td>W0–W2 e il padding sono fissi</td><td class="num">qualche round in meno</td></tr>
+        <tr><td>uscita anticipata</td><td>H7 è pronto dopo il round 60 del secondo hash</td><td class="num">3 round in meno</td></tr>
+        <tr><td>tutte insieme</td><td></td><td class="num hit">6.556 (−36,6%)</td></tr>
+        <tr><td>+ AsicBoost, 4 header</td><td>stesso blocco 2, schedule condiviso</td><td class="num hit">5.832 (−43,6%)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    <span>Codice, test e report: <a href="https://github.com/Ronfo2013/sha256-ml-esperimento">github.com/Ronfo2013/sha256-ml-esperimento</a></span>
+    <span>Tutti i calcoli della pagina sono SHA-256 reale in JavaScript; l'hash del genesi coincide con quello pubblicato.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+const IV=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+const GEN_HEX="0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
+const GEN_NONCE=2083236893;
+const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+const S0=a=>rotr(a,2)^rotr(a,13)^rotr(a,22), S1=e=>rotr(e,6)^rotr(e,11)^rotr(e,25);
+const s0=x=>rotr(x,7)^rotr(x,18)^(x>>>3), s1=x=>rotr(x,17)^rotr(x,19)^(x>>>10);
+const hex=x=>(x>>>0).toString(16).padStart(8,"0");
+const pop=x=>{x=x-((x>>>1)&0x55555555);x=(x&0x33333333)+((x>>>2)&0x33333333);return(((x+(x>>>4))&0x0f0f0f0f)*0x01010101)>>>24};
+const bswap=x=>(((x&0xff)<<24)|((x&0xff00)<<8)|((x>>>8)&0xff00)|(x>>>24))>>>0;
+
+function compress(state,w16){
+  const w=w16.slice();
+  for(let t=16;t<64;t++) w[t]=(w[t-16]+s0(w[t-15])+w[t-7]+s1(w[t-2]))>>>0;
+  let [a,b,c,d,e,f,g,h]=state; const trace=[];
+  for(let t=0;t<64;t++){
+    const ch=(e&f)^(~e&g), maj=(a&b)^(a&c)^(b&c);
+    const t1=(h+S1(e)+ch+K[t]+w[t])>>>0, t2=(S0(a)+maj)>>>0;
+    trace.push({before:[a,b,c,d,e,f,g,h],t1,t2,w:w[t],k:K[t]});
+    h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    trace[t].after=[a,b,c,d,e,f,g,h];
+  }
+  const out=state.map((s,i)=>(s+[a,b,c,d,e,f,g,h][i])>>>0);
+  return {trace,out,w};
+}
+const hdr=new Uint8Array(GEN_HEX.match(/../g).map(h=>parseInt(h,16)));
+const wordsBE=(bytes,off,n)=>Array.from({length:n},(_,i)=>((bytes[off+4*i]<<24)|(bytes[off+4*i+1]<<16)|(bytes[off+4*i+2]<<8)|bytes[off+4*i+3])>>>0);
+const W1=wordsBE(hdr,0,16);
+const MID=compress(IV,W1).out;
+function run(nonce){
+  const w2=wordsBE(hdr,64,3).concat([bswap(nonce>>>0),0x80000000,0,0,0,0,0,0,0,0,0,0,640]);
+  const c1=compress(MID,w2);
+  const w3=c1.out.concat([0x80000000,0,0,0,0,0,0,256]);
+  const c2=compress(IV,w3);
+  return {w2,c1,w3,c2};
+}
+function displayHash(out){ // byte del digest invertiti, come li mostra Bitcoin
+  const bytes=[]; out.forEach(x=>{bytes.push(x>>>24,(x>>>16)&255,(x>>>8)&255,x&255)});
+  return bytes.reverse().map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function leadingZeroBits(h){let n=0;for(const ch of h){const v=parseInt(ch,16);if(v===0){n+=4;continue}n+=Math.clz32(v)-28;break}return n}
+
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let state={nonce:GEN_NONCE,bit:0,stage:1,round:3};
+
+function wordCell(label,val,kind){
+  return `<div class="w k-${kind}"><i>${label}</i><span>${hex(val)}</span></div>`;
+}
+function renderBlocks(r){
+  $("b1").innerHTML=W1.map((v,i)=>wordCell("W"+i,v,"fix")).join("");
+  $("b2").innerHTML=r.w2.map((v,i)=>wordCell("W"+i+(i===3?" nonce":""),v,i===3?"nonce":i>=4?"pad":"fix")).join("");
+  $("b3").innerHTML=r.w3.map((v,i)=>wordCell("W"+i,v,i<8?"dyn":"pad")).join("");
+}
+function renderHash(r){
+  const h=displayHash(r.c2.out), z=leadingZeroBits(h);
+  const zc=Math.floor(z/4);
+  $("hashline").innerHTML=`<span class="z">${h.slice(0,zc)}</span>${h.slice(zc)}`;
+  $("m-nonce").textContent=state.nonce.toLocaleString("it-IT");
+  $("m-zeros").textContent=z+" bit";
+  $("m-valid").textContent=z>=32?"sì":"no";
+}
+let diffRows=[];
+function renderMap(){
+  const a=run(state.nonce), b=run((state.nonce^(1<<state.bit))>>>0);
+  const ta=(state.stage===1?a.c1:a.c2).trace, tb=(state.stage===1?b.c1:b.c2).trace;
+  const cv=$("map"), ctx=cv.getContext("2d"), cw=cv.width/256, rh=cv.height/64;
+  ctx.fillStyle=css("--panel");ctx.fillRect(0,0,cv.width,cv.height);
+  const same=css("--same"), acc=css("--accent"), cool=css("--cool");
+  diffRows=[];
+  for(let t=0;t<64;t++){
+    let cnt=0;
+    for(let r=0;r<8;r++){
+      const d=(ta[t].after[r]^tb[t].after[r])>>>0; cnt+=pop(d);
+      for(let bit=0;bit<32;bit++){
+        const on=(d>>>(31-bit))&1;
+        ctx.fillStyle=on?acc:same;
+        ctx.fillRect((r*32+bit)*cw,t*rh,cw-(bit===31?2:0.6),rh-0.8);
+      }
+    }
+    diffRows.push(cnt);
+  }
+  ctx.strokeStyle=cool;ctx.lineWidth=2;ctx.strokeRect(1,state.round*rh+1,cv.width-2,rh-2);
+  renderCurve();renderDetail(ta,tb);
+}
+function renderYlab(){
+  $("ylab").innerHTML=[0,3,5,16,32,48,63].map(t=>`<span style="top:${(t+.5)/64*100}%">${t}</span>`).join("");
+}
+function renderCurve(){
+  const W=180,H=300,x=v=>14+v/256*(W-22),y=t=>8+t/63*(H-16);
+  const mid=css("--muted"),acc=css("--accent"),line=css("--line"),fg=css("--fg");
+  let pts=diffRows.map((v,t)=>`${x(v).toFixed(1)},${y(t).toFixed(1)}`).join(" ");
+  let s=`<line x1="${x(128)}" y1="8" x2="${x(128)}" y2="${H-8}" stroke="${mid}" stroke-dasharray="3 3"/>`;
+  s+=`<line x1="${x(0)}" y1="8" x2="${x(0)}" y2="${H-8}" stroke="${line}"/>`;
+  [0,128,256].forEach(v=>s+=`<text x="${x(v)}" y="${H}" font-size="9" fill="${mid}" text-anchor="middle" font-family="IBM Plex Mono,monospace">${v}</text>`);
+  s+=`<polyline points="${pts}" fill="none" stroke="${acc}" stroke-width="1.8"/>`;
+  const t=state.round;
+  s+=`<circle cx="${x(diffRows[t])}" cy="${y(t)}" r="3.5" fill="${fg}"/>`;
+  s+=`<text x="${Math.min(x(diffRows[t])+6,W-40)}" y="${y(t)+3}" font-size="10" fill="${fg}" font-family="IBM Plex Mono,monospace">${diffRows[t]}</text>`;
+  $("curve").innerHTML=s;
+}
+const RN="abcdefgh";
+function renderDetail(ta,tb){
+  const t=state.round, A=ta[t], B=tb[t];
+  const regs=A.after.map((v,i)=>{const d=pop((v^B.after[i])>>>0);
+    return `<div class="reg"><i>${RN[i]}</i><span>${hex(v)}</span><span class="${d?"d":""}">${d} bit diversi</span></div>`}).join("");
+  const where=state.stage===1?"blocco 2":"secondo SHA-256";
+  let note;
+  if(state.stage===1&&t<3) note="Il nonce non è ancora entrato: questi round sono uguali per ogni nonce e si precalcolano.";
+  else if(state.stage===1&&t===3) note="Qui entra W3, il nonce: T1 = costante + W3. È una somma, e un modello la può imparare.";
+  else if(state.stage===1&&t===4) note="T1 passa per Σ1 e Ch, T2 per Σ0 e Maj: la differenza si mescola con tutto lo stato.";
+  else if(diffRows[t]>100) note="Circa metà dei bit è diversa: lo stato non dice più niente sul nonce di partenza.";
+  else note="La differenza si sta allargando.";
+  $("detail").innerHTML=`<div class="eyebrow">Round ${t} · ${where} · ${diffRows[t]} bit diversi su 256</div>
+  <p>${note}</p>
+  <pre class="formula">W[${t}] = ${hex(A.w)}   K[${t}] = ${hex(A.k)}
+T1 = h + Σ1(e) + Ch(e,f,g) + K + W = ${hex(A.t1)}
+T2 = Σ0(a) + Maj(a,b,c)           = ${hex(A.t2)}
+a ← T1 + T2    e ← d + T1    gli altri registri scorrono</pre>
+  <div class="regs">${regs}</div>`;
+}
+function renderAll(){
+  const r=run(state.nonce); renderBlocks(r); renderHash(r); renderMap();
+  $("nonce").value=state.nonce; $("bitv").textContent=state.bit;
+}
+$("nonce").addEventListener("change",e=>{let v=Math.floor(Number(e.target.value));if(!Number.isFinite(v)||v<0)v=0;state.nonce=Math.min(v,4294967295)>>>0;renderAll()});
+$("bit").addEventListener("input",e=>{state.bit=+e.target.value;renderAll()});
+$("next").addEventListener("click",()=>{state.nonce=(state.nonce+1)>>>0;renderAll()});
+$("rand").addEventListener("click",()=>{state.nonce=crypto.getRandomValues(new Uint32Array(1))[0];renderAll()});
+$("gen").addEventListener("click",()=>{state.nonce=GEN_NONCE;renderAll()});
+document.querySelectorAll('input[name=stage]').forEach(el=>el.addEventListener("change",e=>{state.stage=+e.target.value;state.round=state.stage===1?3:0;renderMap()}));
+$("map").addEventListener("click",e=>{const r=e.target.getBoundingClientRect();state.round=Math.max(0,Math.min(63,Math.floor((e.clientY-r.top)/r.height*64)));renderMap()});
+$("map").tabIndex=0;
+$("map").addEventListener("keydown",e=>{if(e.key==="ArrowDown"){state.round=Math.min(63,state.round+1);renderMap();e.preventDefault()}if(e.key==="ArrowUp"){state.round=Math.max(0,state.round-1);renderMap();e.preventDefault()}});
+const rerender=()=>renderMap();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",rerender);
+new MutationObserver(rerender).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+renderYlab(); renderAll();
+if(document.fonts) document.fonts.ready.then(rerender);
+})();
+</script>

@@ -80,3 +80,4 @@ di costo. Tecniche già presenti negli ASIC: spiegano il mining, non danno un va
 | `midstate.py`, `run_midstate.py` | studio fra 4 e 5 round con feature precalcolate |
 | `report.py` | report Markdown e grafici |
 | `run_experiment.py` | esegue tutto con un comando |
+| `docs/dentro-sha256.html` | pagina interattiva: dove entra il nonce e come un bit si propaga nei 64 round |
